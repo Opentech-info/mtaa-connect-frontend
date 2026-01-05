@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import NewRequest from "./pages/NewRequest";
+import Requests from "./pages/Requests";
 import OfficerLogin from "./pages/OfficerLogin";
 import OfficerDashboard from "./pages/OfficerDashboard";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/new-request" element={<NewRequest />} />
+          <Route path="/requests" element={<Requests />} />
           <Route path="/officer-login" element={<OfficerLogin />} />
           <Route path="/officer-dashboard" element={<OfficerDashboard />} />
           <Route path="*" element={<NotFound />} />
