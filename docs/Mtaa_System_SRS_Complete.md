@@ -1524,8 +1524,8 @@ All sensitive operations are logged in audit_logs table:
 | Environment | Purpose | URL |
 |-------------|---------|-----|
 | Development | Local testing | localhost:5173 |
-| Staging | Pre-production testing | staging.mtaa-system.lovable.app |
-| Production | Live system | mtaa-system.lovable.app |
+| Staging | Pre-production testing | staging.mtaa-system.example.com |
+| Production | Live system | mtaa-system.example.com |
 
 ---
 
