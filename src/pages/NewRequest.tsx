@@ -56,7 +56,7 @@ type RequestDetailResponse = {
   metadata?: Partial<ResidenceData>;
 };
 
-const requiredResidenceFields: (keyof ResidenceData)[] = [
+const requiredLetterFields: (keyof ResidenceData)[] = [
   "reference_no",
   "to",
   "ward",
@@ -70,7 +70,7 @@ const requiredResidenceFields: (keyof ResidenceData)[] = [
   "letter_date",
 ];
 
-const residenceFieldLabels: Record<keyof ResidenceData, string> = {
+const letterFieldLabels: Record<keyof ResidenceData, string> = {
   reference_no: "Kumbukumbu Na.",
   to: "KWA (Anayehusika)",
   ward: "Kata",
@@ -82,6 +82,12 @@ const residenceFieldLabels: Record<keyof ResidenceData, string> = {
   occupation: "Kazi",
   stay_duration: "Muda wa Makazi",
   letter_date: "Tarehe ya Barua",
+};
+
+const subjectMap: Record<"residence" | "nida" | "license", string> = {
+  residence: "UTAMBULISHO WA MKAZI",
+  nida: "UTAMBULISHO WA NIDA",
+  license: "UTAMBULISHO WA LESENI",
 };
 
 const NewRequest = () => {
@@ -180,18 +186,18 @@ const NewRequest = () => {
     };
   }, [resubmitId, toast]);
 
-  const missingResidenceFields = useMemo(
-    () => requiredResidenceFields.filter((field) => !residence[field].trim()),
+  const missingLetterFields = useMemo(
+    () => requiredLetterFields.filter((field) => !residence[field].trim()),
     [residence]
   );
 
-  const isResidenceSelected = formData.letterType === "residence";
+  const isLetterSelected = Boolean(formData.letterType);
   const isResubmitting = Boolean(resubmitId);
   const resubmitLocked = isResubmitting && resubmitStatus && resubmitStatus !== "rejected";
   const isFormValid =
     !!formData.letterType &&
     !!formData.purpose.trim() &&
-    (!isResidenceSelected || missingResidenceFields.length === 0) &&
+    (!isLetterSelected || missingLetterFields.length === 0) &&
     !resubmitLocked;
 
   const formatValue = (value: string | undefined, fallback = "........................") => {
@@ -232,8 +238,8 @@ const NewRequest = () => {
       return;
     }
 
-    if (isResidenceSelected && missingResidenceFields.length > 0) {
-      const missingLabels = missingResidenceFields.map((field) => residenceFieldLabels[field]).join(", ");
+    if (isLetterSelected && missingLetterFields.length > 0) {
+      const missingLabels = missingLetterFields.map((field) => letterFieldLabels[field]).join(", ");
       toast({
         title: "Complete Required Fields",
         description: `Please fill in: ${missingLabels}.`,
@@ -254,22 +260,19 @@ const NewRequest = () => {
     setIsLoading(true);
 
     try {
-      const metadata =
-        formData.letterType === "residence"
-          ? {
-              reference_no: residence.reference_no,
-              to: residence.to,
-              ward: residence.ward,
-              mtaa: residence.mtaa,
-              region: residence.region,
-              district: residence.district,
-              house_no: residence.house_no,
-              birth_date: residence.birth_date,
-              occupation: residence.occupation,
-              stay_duration: residence.stay_duration,
-              letter_date: residence.letter_date,
-            }
-          : {};
+      const metadata = {
+        reference_no: residence.reference_no,
+        to: residence.to,
+        ward: residence.ward,
+        mtaa: residence.mtaa,
+        region: residence.region,
+        district: residence.district,
+        house_no: residence.house_no,
+        birth_date: residence.birth_date,
+        occupation: residence.occupation,
+        stay_duration: residence.stay_duration,
+        letter_date: residence.letter_date,
+      };
 
       const endpoint = isResubmitting ? `/api/requests/${resubmitId}/resubmit/` : "/api/requests/";
       await apiFetch(endpoint, {
@@ -407,10 +410,10 @@ const NewRequest = () => {
                     </p>
                   </div>
 
-                  {isResidenceSelected && (
+                  {isLetterSelected && (
                     <div className="space-y-4">
                       <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
-                        Resident Letter Details
+                        Letter Details
                       </h3>
 
                       <div className="rounded-lg border border-border/70 bg-muted/40 p-4 space-y-4">
@@ -597,9 +600,9 @@ const NewRequest = () => {
                 <CardDescription>Preview the official letter layout before submitting.</CardDescription>
               </CardHeader>
               <CardContent>
-                {!isResidenceSelected ? (
+                {!isLetterSelected ? (
                   <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-                    Select "Residence Letter" to see a detailed preview of the official letter format.
+                    Select a letter type to see a detailed preview of the official letter format.
                   </div>
                 ) : (
                   <div className="rounded-xl border border-slate-200 bg-white p-6 text-[11px] leading-relaxed text-slate-900 shadow-sm">
@@ -633,7 +636,9 @@ const NewRequest = () => {
                       <div>KWA: {formatValue(residence.to, "Husika / Yeyote Anayehusika")}</div>
                     </div>
 
-                    <div className="mt-3 text-center font-semibold">YAH: UTAMBULISHO WA MKAZI</div>
+                    <div className="mt-3 text-center font-semibold">
+                      YAH: {subjectMap[formData.letterType as "residence" | "nida" | "license"]}
+                    </div>
 
                     <div className="mt-3 space-y-2">
                       <p>Husika na kichwa cha habari tajwa hapo juu.</p>
