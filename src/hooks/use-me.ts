@@ -9,13 +9,17 @@ export type MeResponse = {
     full_name: string;
     role: "citizen" | "officer" | "admin";
   };
-  profile: {
-    phone: string;
-    gender: string;
-    age: number;
-    address: string;
-    nida_number: string;
-  } | null;
+  profile:
+    | {
+        phone?: string;
+        gender?: string;
+        age?: number;
+        address?: string;
+        nida_number?: string;
+        position?: string;
+        office?: string;
+      }
+    | null;
 };
 
 export const useMe = () =>

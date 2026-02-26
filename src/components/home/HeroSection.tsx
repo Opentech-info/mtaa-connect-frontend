@@ -36,7 +36,7 @@ const HeroSection = () => {
             <Button 
               variant="outline" 
               size="xl" 
-              className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+              className="border-primary-foreground/40 text-primary-foreground bg-transparent hover:bg-primary-foreground/10 hover:text-primary-foreground"
               asChild
             >
               <Link to="/officer-login">Officer Portal</Link>

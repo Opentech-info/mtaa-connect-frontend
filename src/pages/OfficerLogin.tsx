@@ -16,12 +16,6 @@ type LoginResponse = {
   refresh: string;
 };
 
-type MeResponse = {
-  user: {
-    role: "citizen" | "officer" | "admin";
-  };
-};
-
 const OfficerLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,25 +26,14 @@ const OfficerLogin = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    clearTokens();
 
     try {
-      const tokens = await apiFetch<LoginResponse>("/api/auth/login/", {
+      const tokens = await apiFetch<LoginResponse>("/api/auth/officer-login/", {
         method: "POST",
         body: { email, password },
       });
       setTokens(tokens);
-
-      const me = await apiFetch<MeResponse>("/api/me/");
-      const role = me.user.role;
-      if (role !== "officer" && role !== "admin") {
-        clearTokens();
-        toast({
-          title: "Access Denied",
-          description: "This account does not have officer access.",
-          variant: "destructive",
-        });
-        return;
-      }
 
       toast({
         title: "Login Successful",
@@ -59,6 +42,7 @@ const OfficerLogin = () => {
       navigate("/officer-dashboard");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login failed.";
+      clearTokens();
       toast({
         title: "Login Failed",
         description: message,

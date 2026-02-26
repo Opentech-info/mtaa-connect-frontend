@@ -5,7 +5,7 @@ import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle2, Eye, Check, X, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Eye, RotateCcw, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -15,7 +15,7 @@ import { useMe } from "@/hooks/use-me";
 type RequestItem = {
   id: number;
   request_type: "residence" | "nida" | "license";
-  status: "pending" | "approved" | "rejected";
+  status: "approved";
   purpose: string;
   created_at: string;
   citizen_id: number;
@@ -43,60 +43,21 @@ const requestTypeLabel = (type: RequestItem["request_type"]) => {
   }
 };
 
-const PendingRequests = () => {
+const ApprovedRequests = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: me } = useMe();
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["pending-requests"],
-    queryFn: () => apiFetch<Paginated<RequestItem>>("/api/requests/pending/"),
+    queryKey: ["approved-requests"],
+    queryFn: () => apiFetch<Paginated<RequestItem>>("/api/requests/approved/"),
     enabled: isAuthenticated(),
   });
+
   const requests = data?.results ?? [];
 
   const handleLogout = () => {
     clearTokens();
     navigate("/");
-  };
-
-  const handleApprove = async (requestId: number) => {
-    try {
-      await apiFetch(`/api/requests/${requestId}/approve/`, { method: "POST" });
-      toast({
-        title: "Request Approved",
-        description: `Request REQ-${requestId} has been approved.`,
-      });
-      refetch();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Approval failed.";
-      toast({
-        title: "Approval Failed",
-        description: message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleReject = async (requestId: number) => {
-    try {
-      await apiFetch(`/api/requests/${requestId}/reject/`, {
-        method: "POST",
-        body: { reason: "Rejected by officer." },
-      });
-      toast({
-        title: "Request Rejected",
-        description: `Request REQ-${requestId} has been rejected.`,
-        variant: "destructive",
-      });
-      refetch();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Rejection failed.";
-      toast({
-        title: "Rejection Failed",
-        description: message,
-        variant: "destructive",
-      });
-    }
   };
 
   useEffect(() => {
@@ -114,6 +75,24 @@ const PendingRequests = () => {
       });
     }
   }, [me, navigate, toast]);
+
+  const handleReopen = async (requestId: number) => {
+    try {
+      await apiFetch(`/api/requests/${requestId}/reopen/`, { method: "POST" });
+      toast({
+        title: "Request Reopened",
+        description: `Request REQ-${requestId} is back to pending.`,
+      });
+      refetch();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Update failed.";
+      toast({
+        title: "Unable to Reopen",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  };
 
   const formatDate = (value: string) =>
     new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -135,39 +114,30 @@ const PendingRequests = () => {
 
           <div className="mb-6 animate-fade-in">
             <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2">
-              Pending Requests
+              Approved Requests
             </h1>
-            <p className="text-muted-foreground">Review and process pending requests.</p>
+            <p className="text-muted-foreground">Review approved requests and reopen if needed.</p>
           </div>
 
           <Card className="shadow-card animate-slide-up">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-warning" />
-                Waiting for Review
+                <CheckCircle2 className="w-5 h-5 text-success" />
+                Approved Letters
               </CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="p-8 text-center">
-                  <p className="text-sm text-muted-foreground">Loading requests...</p>
-                </div>
+                <div className="p-8 text-center text-sm text-muted-foreground">Loading requests...</div>
               ) : isError || requests.length === 0 ? (
-                <div className="p-8 text-center">
-                  <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
-                  <h3 className="font-semibold text-foreground mb-2">
-                    {isError ? "Unable to load requests" : "All caught up"}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">No pending requests right now.</p>
+                <div className="p-8 text-center text-sm text-muted-foreground">
+                  {isError ? "Unable to load approved requests." : "No approved requests yet."}
                 </div>
               ) : (
                 <div className="space-y-4">
                   {requests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div key={request.id} className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="font-semibold text-foreground">{request.citizen_name}</span>
@@ -181,32 +151,13 @@ const PendingRequests = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-1"
-                            onClick={() => navigate(`/citizens/${request.citizen_id}`)}
-                          >
+                          <Button variant="ghost" size="sm" className="gap-1" onClick={() => navigate(`/citizens/${request.citizen_id}`)}>
                             <Eye className="w-4 h-4" />
                             View Citizen
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="gap-1 text-destructive hover:text-destructive"
-                            onClick={() => handleReject(request.id)}
-                          >
-                            <X className="w-4 h-4" />
-                            Reject
-                          </Button>
-                          <Button
-                            variant="success"
-                            size="sm"
-                            className="gap-1"
-                            onClick={() => handleApprove(request.id)}
-                          >
-                            <Check className="w-4 h-4" />
-                            Approve
+                          <Button variant="outline" size="sm" className="gap-1" onClick={() => handleReopen(request.id)}>
+                            <RotateCcw className="w-4 h-4" />
+                            Reopen
                           </Button>
                         </div>
                       </div>
@@ -223,4 +174,4 @@ const PendingRequests = () => {
   );
 };
 
-export default PendingRequests;
+export default ApprovedRequests;

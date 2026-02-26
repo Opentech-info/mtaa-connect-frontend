@@ -22,6 +22,50 @@ const parseJson = async <T>(response: Response): Promise<T> => {
   return JSON.parse(text) as T;
 };
 
+const formatValidationErrors = (data: Record<string, unknown>) => {
+  const entries = Object.entries(data);
+  if (!entries.length) {
+    return "Request failed.";
+  }
+
+  return entries
+    .map(([key, value]) => {
+      const label = key.replace(/_/g, " ");
+      if (Array.isArray(value)) {
+        return `${label}: ${value.join(" ")}`;
+      }
+      if (typeof value === "string") {
+        return `${label}: ${value}`;
+      }
+      return `${label}: Invalid value.`;
+    })
+    .join(" ");
+};
+
+const parseErrorMessage = (text: string) => {
+  if (!text) {
+    return "Request failed.";
+  }
+  if (text.trim().startsWith("<")) {
+    return "Server error. Please try again.";
+  }
+  try {
+    const data = JSON.parse(text) as Record<string, unknown>;
+    if (typeof data === "string") {
+      return data;
+    }
+    if (data.detail && typeof data.detail === "string") {
+      return data.detail;
+    }
+    if (Array.isArray(data.non_field_errors)) {
+      return data.non_field_errors.join(" ");
+    }
+    return formatValidationErrors(data);
+  } catch {
+    return text;
+  }
+};
+
 const buildHeaders = (headers?: HeadersInit, accessToken?: string) => {
   const authToken = accessToken ?? getAccessToken();
   return {
@@ -87,7 +131,7 @@ export const apiFetch = async <T>(path: string, options: ApiOptions = {}): Promi
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || `Request failed with status ${response.status}`);
+    throw new Error(parseErrorMessage(errorText) || `Request failed with status ${response.status}`);
   }
 
   return parseJson<T>(response);

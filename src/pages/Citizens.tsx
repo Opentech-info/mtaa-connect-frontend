@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { clearTokens, isAuthenticated } from "@/lib/auth";
 import { useMe } from "@/hooks/use-me";
+import { useToast } from "@/hooks/use-toast";
 
 type CitizenItem = {
   id: number;
@@ -29,6 +30,7 @@ type Paginated<T> = {
 const Citizens = () => {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const { toast } = useToast();
   const { data: me } = useMe();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["citizens"],
@@ -56,8 +58,18 @@ const Citizens = () => {
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate("/officer-login");
+      return;
     }
-  }, [navigate]);
+    if (me && me.user.role !== "officer" && me.user.role !== "admin") {
+      clearTokens();
+      navigate("/officer-login");
+      toast({
+        title: "Access Denied",
+        description: "Officer access is required.",
+        variant: "destructive",
+      });
+    }
+  }, [me, navigate, toast]);
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
@@ -92,7 +104,7 @@ const Citizens = () => {
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search by name, phone, ward, or ID"
+                  placeholder="Search by name, email, or ID"
                   className="pl-10"
                 />
               </div>
@@ -119,7 +131,11 @@ const Citizens = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/citizens/${citizen.id}`)}
+                        >
                           View Profile
                         </Button>
                       </div>

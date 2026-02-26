@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
-import { setTokens } from "@/lib/auth";
+import { clearTokens, setTokens } from "@/lib/auth";
 
 type LoginResponse = {
   access: string;
@@ -32,6 +32,7 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    clearTokens();
 
     try {
       const tokens = await apiFetch<LoginResponse>("/api/auth/login/", {
@@ -55,6 +56,7 @@ const Login = () => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login failed.";
+      clearTokens();
       toast({
         title: "Login Failed",
         description: message,

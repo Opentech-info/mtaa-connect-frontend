@@ -23,6 +23,7 @@ const Header = ({ isLoggedIn = false, userRole, onLogout }: HeaderProps) => {
       : [
           { href: "/officer-dashboard", label: "Dashboard" },
           { href: "/pending-requests", label: "Pending Requests" },
+          { href: "/approved-requests", label: "Approved Requests" },
           { href: "/citizens", label: "Citizens" },
         ]
     : [];
@@ -65,9 +66,11 @@ const Header = ({ isLoggedIn = false, userRole, onLogout }: HeaderProps) => {
           <div className="hidden md:flex items-center gap-3">
             {isLoggedIn ? (
               <>
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <User className="w-4 h-4" />
-                  Profile
+                <Button variant="ghost" size="sm" className="gap-2" asChild>
+                  <Link to="/profile">
+                    <User className="w-4 h-4" />
+                    Profile
+                  </Link>
                 </Button>
                 <Button variant="outline" size="sm" onClick={onLogout} className="gap-2">
                   <LogOut className="w-4 h-4" />
@@ -117,9 +120,11 @@ const Header = ({ isLoggedIn = false, userRole, onLogout }: HeaderProps) => {
               <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border">
                 {isLoggedIn ? (
                   <>
-                    <Button variant="ghost" className="justify-start gap-2">
-                      <User className="w-4 h-4" />
-                      Profile
+                    <Button variant="ghost" className="justify-start gap-2" asChild>
+                      <Link to="/profile">
+                        <User className="w-4 h-4" />
+                        Profile
+                      </Link>
                     </Button>
                     <Button variant="outline" onClick={onLogout} className="justify-start gap-2">
                       <LogOut className="w-4 h-4" />

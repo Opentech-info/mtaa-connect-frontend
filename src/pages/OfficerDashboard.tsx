@@ -27,6 +27,7 @@ type RequestItem = {
   status: "pending" | "approved" | "rejected";
   purpose: string;
   created_at: string;
+  citizen_id: number;
   citizen_name: string;
   citizen_phone: string;
 };
@@ -51,6 +52,13 @@ type Paginated<T> = {
   results: T[];
 };
 
+type OfficerStats = {
+  pending_requests: number;
+  approved_today: number;
+  total_citizens: number;
+  letters_issued: number;
+};
+
 const OfficerDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -58,6 +66,11 @@ const OfficerDashboard = () => {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["pending-requests"],
     queryFn: () => apiFetch<Paginated<RequestItem>>("/api/requests/pending/"),
+    enabled: isAuthenticated(),
+  });
+  const { data: statsData, refetch: refetchStats } = useQuery({
+    queryKey: ["officer-stats"],
+    queryFn: () => apiFetch<OfficerStats>("/api/stats/officer/"),
     enabled: isAuthenticated(),
   });
 
@@ -75,7 +88,7 @@ const OfficerDashboard = () => {
         title: "Request Approved",
         description: `Request REQ-${requestId} has been approved.`,
       });
-      refetch();
+      await Promise.all([refetch(), refetchStats()]);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Approval failed.";
       toast({
@@ -97,7 +110,7 @@ const OfficerDashboard = () => {
         description: `Request REQ-${requestId} has been rejected.`,
         variant: "destructive",
       });
-      refetch();
+      await Promise.all([refetch(), refetchStats()]);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Rejection failed.";
       toast({
@@ -109,17 +122,51 @@ const OfficerDashboard = () => {
   };
 
   const stats = [
-    { label: "Pending Requests", value: requests.length, icon: Clock, color: "text-warning" },
-    { label: "Approved Today", value: "-", icon: CheckCircle2, color: "text-success" },
-    { label: "Total Citizens", value: "-", icon: Users, color: "text-primary" },
-    { label: "Letters Issued", value: "-", icon: FileText, color: "text-accent-foreground" },
+    {
+      label: "Pending Requests",
+      value: statsData?.pending_requests ?? requests.length,
+      icon: Clock,
+      color: "text-warning",
+      href: "/pending-requests",
+    },
+    {
+      label: "Approved Today",
+      value: statsData?.approved_today ?? "-",
+      icon: CheckCircle2,
+      color: "text-success",
+      href: "/approved-requests",
+    },
+    {
+      label: "Total Citizens",
+      value: statsData?.total_citizens ?? "-",
+      icon: Users,
+      color: "text-primary",
+      href: "/citizens",
+    },
+    {
+      label: "Letters Issued",
+      value: statsData?.letters_issued ?? "-",
+      icon: FileText,
+      color: "text-accent-foreground",
+      href: "/approved-requests",
+    },
   ];
 
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate("/officer-login");
+      return;
     }
-  }, [navigate]);
+    if (me && me.user.role !== "officer" && me.user.role !== "admin") {
+      clearTokens();
+      navigate("/officer-login");
+      toast({
+        title: "Access Denied",
+        description: "Officer access is required.",
+        variant: "destructive",
+      });
+    }
+  }, [me, navigate, toast]);
 
   const formatDate = (value: string) =>
     new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -144,8 +191,16 @@ const OfficerDashboard = () => {
             {stats.map((stat, index) => (
               <Card 
                 key={stat.label} 
-                className="animate-slide-up"
+                className="animate-slide-up cursor-pointer hover:shadow-elevated transition-shadow"
                 style={{ animationDelay: `${index * 0.1}s` }}
+                onClick={() => navigate(stat.href)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    navigate(stat.href);
+                  }
+                }}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
@@ -204,9 +259,14 @@ const OfficerDashboard = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" className="gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(`/citizens/${request.citizen_id}`)}
+                          >
                             <Eye className="w-4 h-4" />
-                            Details
+                            View Citizen
                           </Button>
                           <Button 
                             variant="outline" 
