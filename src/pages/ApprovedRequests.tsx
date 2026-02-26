@@ -5,7 +5,7 @@ import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Eye, RotateCcw, ArrowLeft } from "lucide-react";
+import { CheckCircle2, Eye, RotateCcw, ArrowLeft, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -150,12 +150,31 @@ const ApprovedRequests = () => {
                             <p><strong>Submitted:</strong> {formatDate(request.created_at)}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" className="gap-1" onClick={() => navigate(`/citizens/${request.citizen_id}`)}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(`/officer/requests/${request.id}`)}
+                          >
+                            <FileText className="w-4 h-4" />
+                            Review Letter
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(`/citizens/${request.citizen_id}`)}
+                          >
                             <Eye className="w-4 h-4" />
                             View Citizen
                           </Button>
-                          <Button variant="outline" size="sm" className="gap-1" onClick={() => handleReopen(request.id)}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => handleReopen(request.id)}
+                          >
                             <RotateCcw className="w-4 h-4" />
                             Reopen
                           </Button>

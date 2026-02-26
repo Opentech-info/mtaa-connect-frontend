@@ -178,7 +178,7 @@ const Requests = () => {
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           {request.status === "approved" && (
                             <Button
                               variant="outline"
@@ -190,16 +190,35 @@ const Requests = () => {
                               Download
                             </Button>
                           )}
-                          <Button variant="ghost" size="sm" className="gap-1">
+                          {request.status === "rejected" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1"
+                              onClick={() => navigate(`/new-request?resubmit=${request.id}`)}
+                            >
+                              Edit & Resubmit
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(`/requests/${request.id}`)}
+                          >
                             <Eye className="w-4 h-4" />
                             View
                           </Button>
                         </div>
                       </div>
-                      {request.status === "rejected" && request.rejection_reason && (
-                        <div className="mt-2 p-2 bg-destructive/10 rounded-md">
-                          <p className="text-sm text-destructive">
-                            <strong>Reason:</strong> {request.rejection_reason}
+                      {request.status === "rejected" && (
+                        <div className="mt-3 rounded-md border border-destructive/20 bg-destructive/10 p-3">
+                          <p className="text-sm font-semibold text-destructive">Request rejected</p>
+                          <p className="text-sm text-muted-foreground">
+                            Reason: {request.rejection_reason || "No reason provided."}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Update your information and resubmit when ready.
                           </p>
                         </div>
                       )}

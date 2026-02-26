@@ -14,7 +14,8 @@ import {
   XCircle,
   Eye,
   Check,
-  X
+  X,
+  FileText
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
@@ -101,14 +102,16 @@ const OfficerDashboard = () => {
 
   const handleReject = async (requestId: number) => {
     try {
-      const reason = window.prompt("Provide a reason for rejection:", "Incomplete information") || "";
+      const reasonInput =
+        window.prompt("Provide a reason for rejection:", "Incomplete information") || "";
+      const reason = reasonInput.trim() || "No reason provided.";
       await apiFetch(`/api/requests/${requestId}/reject/`, {
         method: "POST",
-        body: { reason: reason.trim() || "Rejected by officer." },
+        body: { reason },
       });
       toast({
         title: "Request Rejected",
-        description: `Request REQ-${requestId} has been rejected.`,
+        description: `REQ-${requestId} rejected. Reason: ${reason}. The citizen will be notified.`,
         variant: "destructive",
       });
       await Promise.all([refetch(), refetchStats()]);
@@ -259,7 +262,16 @@ const OfficerDashboard = () => {
                             <p><strong>Submitted:</strong> {formatDate(request.created_at)}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(`/officer/requests/${request.id}`)}
+                          >
+                            <FileText className="w-4 h-4" />
+                            Review Letter
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"

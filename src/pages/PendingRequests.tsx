@@ -5,7 +5,7 @@ import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, CheckCircle2, Eye, Check, X, ArrowLeft } from "lucide-react";
+import { Clock, CheckCircle2, Eye, Check, X, ArrowLeft, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -79,14 +79,16 @@ const PendingRequests = () => {
 
   const handleReject = async (requestId: number) => {
     try {
-      const reason = window.prompt("Provide a reason for rejection:", "Incomplete information") || "";
+      const reasonInput =
+        window.prompt("Provide a reason for rejection:", "Incomplete information") || "";
+      const reason = reasonInput.trim() || "No reason provided.";
       await apiFetch(`/api/requests/${requestId}/reject/`, {
         method: "POST",
-        body: { reason: reason.trim() || "Rejected by officer." },
+        body: { reason },
       });
       toast({
         title: "Request Rejected",
-        description: `Request REQ-${requestId} has been rejected.`,
+        description: `REQ-${requestId} rejected. Reason: ${reason}. The citizen will be notified.`,
         variant: "destructive",
       });
       refetch();
@@ -181,7 +183,16 @@ const PendingRequests = () => {
                             <p><strong>Submitted:</strong> {formatDate(request.created_at)}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1"
+                            onClick={() => navigate(`/officer/requests/${request.id}`)}
+                          >
+                            <FileText className="w-4 h-4" />
+                            Review Letter
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
