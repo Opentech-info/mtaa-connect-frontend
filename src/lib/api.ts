@@ -138,3 +138,20 @@ export const apiFetch = async <T>(path: string, options: ApiOptions = {}): Promi
 };
 
 export const getHealth = () => apiFetch<{ status: string }>("/api/health/");
+
+export const downloadRequestPdf = async (requestId: number) => {
+  const response = await request(`/api/requests/${requestId}/download/`, { method: "GET" });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(parseErrorMessage(errorText));
+  }
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `mtaa-letter-${requestId}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};

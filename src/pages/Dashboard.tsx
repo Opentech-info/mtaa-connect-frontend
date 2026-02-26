@@ -17,7 +17,7 @@ import {
   Download,
   Eye
 } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, downloadRequestPdf } from "@/lib/api";
 import { clearTokens, isAuthenticated } from "@/lib/auth";
 import { useMe } from "@/hooks/use-me";
 
@@ -216,7 +216,12 @@ const Dashboard = () => {
                           </div>
                           <div className="flex items-center gap-2">
                             {request.status === "approved" && (
-                              <Button variant="outline" size="sm" className="gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1"
+                                onClick={() => downloadRequestPdf(request.id)}
+                              >
                                 <Download className="w-4 h-4" />
                                 Download
                               </Button>

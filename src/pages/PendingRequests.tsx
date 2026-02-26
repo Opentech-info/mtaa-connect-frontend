@@ -79,9 +79,10 @@ const PendingRequests = () => {
 
   const handleReject = async (requestId: number) => {
     try {
+      const reason = window.prompt("Provide a reason for rejection:", "Incomplete information") || "";
       await apiFetch(`/api/requests/${requestId}/reject/`, {
         method: "POST",
-        body: { reason: "Rejected by officer." },
+        body: { reason: reason.trim() || "Rejected by officer." },
       });
       toast({
         title: "Request Rejected",

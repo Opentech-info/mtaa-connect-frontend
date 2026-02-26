@@ -41,6 +41,19 @@ const NewRequest = () => {
     additionalInfo: "",
     urgency: "normal",
   });
+  const [residence, setResidence] = useState({
+    reference_no: "",
+    to: "",
+    ward: "",
+    mtaa: "",
+    region: "",
+    district: "",
+    house_no: "",
+    birth_date: "",
+    occupation: "",
+    stay_duration: "",
+    letter_date: "",
+  });
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -49,11 +62,32 @@ const NewRequest = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleResidenceChange = (field: keyof typeof residence, value: string) => {
+    setResidence((prev) => ({ ...prev, [field]: value }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      const metadata =
+        formData.letterType === "residence"
+          ? {
+              reference_no: residence.reference_no,
+              to: residence.to,
+              ward: residence.ward,
+              mtaa: residence.mtaa,
+              region: residence.region,
+              district: residence.district,
+              house_no: residence.house_no,
+              birth_date: residence.birth_date,
+              occupation: residence.occupation,
+              stay_duration: residence.stay_duration,
+              letter_date: residence.letter_date,
+            }
+          : {};
+
       await apiFetch("/api/requests/", {
         method: "POST",
         body: {
@@ -61,6 +95,7 @@ const NewRequest = () => {
           purpose: formData.purpose,
           additional_info: formData.additionalInfo,
           urgency: formData.urgency,
+          metadata,
         },
       });
       toast({
@@ -160,6 +195,119 @@ const NewRequest = () => {
                     Briefly describe why you need this letter
                   </p>
                 </div>
+
+                {formData.letterType === "residence" && (
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-foreground border-b border-border pb-2">
+                      Resident Letter Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="reference_no">Kumbukumbu Na.</Label>
+                        <Input
+                          id="reference_no"
+                          placeholder="SM/SN/KN/____"
+                          value={residence.reference_no}
+                          onChange={(e) => handleResidenceChange("reference_no", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="to">KWA (Anayehusika)</Label>
+                        <Input
+                          id="to"
+                          placeholder="Husika / Yeyote Anayehusika"
+                          value={residence.to}
+                          onChange={(e) => handleResidenceChange("to", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="letter_date">Tarehe ya Barua</Label>
+                        <Input
+                          id="letter_date"
+                          type="date"
+                          value={residence.letter_date}
+                          onChange={(e) => handleResidenceChange("letter_date", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ward">Kata</Label>
+                        <Input
+                          id="ward"
+                          placeholder="Mfano: Nyakato"
+                          value={residence.ward}
+                          onChange={(e) => handleResidenceChange("ward", e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="mtaa">Mtaa</Label>
+                        <Input
+                          id="mtaa"
+                          placeholder="Mfano: Mtaa wa Nyakato"
+                          value={residence.mtaa}
+                          onChange={(e) => handleResidenceChange("mtaa", e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="region">Mkoa</Label>
+                        <Input
+                          id="region"
+                          placeholder="Mfano: Mara"
+                          value={residence.region}
+                          onChange={(e) => handleResidenceChange("region", e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="district">Wilaya</Label>
+                        <Input
+                          id="district"
+                          placeholder="Mfano: Musoma"
+                          value={residence.district}
+                          onChange={(e) => handleResidenceChange("district", e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="house_no">Nyumba No.</Label>
+                        <Input
+                          id="house_no"
+                          placeholder="Nyumba No"
+                          value={residence.house_no}
+                          onChange={(e) => handleResidenceChange("house_no", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="birth_date">Tarehe ya Kuzaliwa</Label>
+                        <Input
+                          id="birth_date"
+                          type="date"
+                          value={residence.birth_date}
+                          onChange={(e) => handleResidenceChange("birth_date", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="occupation">Kazi</Label>
+                        <Input
+                          id="occupation"
+                          placeholder="Kazi"
+                          value={residence.occupation}
+                          onChange={(e) => handleResidenceChange("occupation", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="stay_duration">Muda wa Makazi</Label>
+                        <Input
+                          id="stay_duration"
+                          placeholder="Mfano: Miaka 3"
+                          value={residence.stay_duration}
+                          onChange={(e) => handleResidenceChange("stay_duration", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Urgency */}
                 <div className="space-y-2">
