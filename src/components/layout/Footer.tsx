@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
+import { useHealth } from "@/hooks/use-health";
 
 const Footer = () => {
+  const { data, isError, isLoading } = useHealth();
+  const backendStatus = isLoading ? "Checking..." : isError ? "Offline" : data?.status === "ok" ? "Online" : "Unknown";
+
   return (
     <footer className="bg-card border-t border-border mt-auto">
       <div className="container mx-auto px-4 py-8">
@@ -52,8 +56,9 @@ const Footer = () => {
 
         <div className="border-t border-border mt-8 pt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} Mtaa Resident Registration System. All rights reserved.
+            (c) {new Date().getFullYear()} Mtaa Resident Registration System. All rights reserved.
           </p>
+          <p className="text-xs text-muted-foreground mt-2">Backend: {backendStatus}</p>
         </div>
       </div>
     </footer>

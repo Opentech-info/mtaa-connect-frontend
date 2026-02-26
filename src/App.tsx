@@ -11,6 +11,9 @@ import NewRequest from "./pages/NewRequest";
 import Requests from "./pages/Requests";
 import OfficerLogin from "./pages/OfficerLogin";
 import OfficerDashboard from "./pages/OfficerDashboard";
+import PendingRequests from "./pages/PendingRequests";
+import Citizens from "./pages/Citizens";
+import ForgotPassword from "./pages/ForgotPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +33,9 @@ const App = () => (
           <Route path="/requests" element={<Requests />} />
           <Route path="/officer-login" element={<OfficerLogin />} />
           <Route path="/officer-dashboard" element={<OfficerDashboard />} />
+          <Route path="/pending-requests" element={<PendingRequests />} />
+          <Route path="/citizens" element={<Citizens />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

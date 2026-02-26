@@ -9,6 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Mail, Lock, Phone, MapPin, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api";
+import { setTokens } from "@/lib/auth";
+
+type RegisterResponse = {
+  id: number;
+  email: string;
+};
+
+type LoginResponse = {
+  access: string;
+  refresh: string;
+};
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -44,15 +56,43 @@ const Register = () => {
 
     setIsLoading(true);
 
-    // Simulate registration - will be replaced with actual auth
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await apiFetch<RegisterResponse>("/api/auth/register/", {
+        method: "POST",
+        body: {
+          full_name: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          gender: formData.gender,
+          age: Number(formData.age),
+          address: formData.address,
+          nida_number: formData.nidaNumber || "",
+          password: formData.password,
+          confirm_password: formData.confirmPassword,
+        },
+      });
+
+      const tokens = await apiFetch<LoginResponse>("/api/auth/login/", {
+        method: "POST",
+        body: { email: formData.email, password: formData.password },
+      });
+      setTokens(tokens);
+
       toast({
         title: "Registration Successful",
-        description: "Your account has been created. Please login.",
+        description: "Welcome to MTAA Connect!",
       });
-      navigate("/login");
-    }, 1000);
+      navigate("/dashboard");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Registration failed.";
+      toast({
+        title: "Registration Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -193,7 +233,7 @@ const Register = () => {
                       <Input
                         id="password"
                         type="password"
-                        placeholder="••••••••"
+                        placeholder="********"
                         value={formData.password}
                         onChange={(e) => handleChange("password", e.target.value)}
                         className="pl-10"
@@ -210,7 +250,7 @@ const Register = () => {
                       <Input
                         id="confirmPassword"
                         type="password"
-                        placeholder="••••••••"
+                        placeholder="********"
                         value={formData.confirmPassword}
                         onChange={(e) => handleChange("confirmPassword", e.target.value)}
                         className="pl-10"

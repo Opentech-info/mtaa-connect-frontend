@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Send, Home, CreditCard, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api";
+import { clearTokens, isAuthenticated } from "@/lib/auth";
 
 const letterTypeInfo = {
   residence: {
@@ -51,20 +53,43 @@ const NewRequest = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate request submission
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await apiFetch("/api/requests/", {
+        method: "POST",
+        body: {
+          request_type: formData.letterType,
+          purpose: formData.purpose,
+          additional_info: formData.additionalInfo,
+          urgency: formData.urgency,
+        },
+      });
       toast({
         title: "Request Submitted",
         description: "Your letter request has been submitted successfully. You will be notified once it's processed.",
       });
       navigate("/dashboard");
-    }, 1500);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Request failed.";
+      toast({
+        title: "Submission Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleLogout = () => {
+    clearTokens();
     navigate("/");
   };
+
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      navigate("/login");
+    }
+  }, [navigate]);
 
   const selectedTypeInfo = formData.letterType ? letterTypeInfo[formData.letterType as keyof typeof letterTypeInfo] : null;
 

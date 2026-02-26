@@ -5,18 +5,9 @@ import Footer from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useQuery } from "@tanstack/react-query";
-import { 
-  Users, 
-  FileText, 
-  Clock, 
-  CheckCircle2, 
-  XCircle,
-  Eye,
-  Check,
-  X
-} from "lucide-react";
+import { Clock, CheckCircle2, Eye, Check, X, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { clearTokens, isAuthenticated } from "@/lib/auth";
 import { useMe } from "@/hooks/use-me";
@@ -29,6 +20,13 @@ type RequestItem = {
   created_at: string;
   citizen_name: string;
   citizen_phone: string;
+};
+
+type Paginated<T> = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
 };
 
 const requestTypeLabel = (type: RequestItem["request_type"]) => {
@@ -44,14 +42,7 @@ const requestTypeLabel = (type: RequestItem["request_type"]) => {
   }
 };
 
-type Paginated<T> = {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
-};
-
-const OfficerDashboard = () => {
+const PendingRequests = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { data: me } = useMe();
@@ -60,7 +51,6 @@ const OfficerDashboard = () => {
     queryFn: () => apiFetch<Paginated<RequestItem>>("/api/requests/pending/"),
     enabled: isAuthenticated(),
   });
-
   const requests = data?.results ?? [];
 
   const handleLogout = () => {
@@ -108,13 +98,6 @@ const OfficerDashboard = () => {
     }
   };
 
-  const stats = [
-    { label: "Pending Requests", value: requests.length, icon: Clock, color: "text-warning" },
-    { label: "Approved Today", value: "-", icon: CheckCircle2, color: "text-success" },
-    { label: "Total Citizens", value: "-", icon: Users, color: "text-primary" },
-    { label: "Letters Issued", value: "-", icon: FileText, color: "text-accent-foreground" },
-  ];
-
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate("/officer-login");
@@ -129,45 +112,28 @@ const OfficerDashboard = () => {
       <Header isLoggedIn={true} userRole={me?.user.role || "officer"} onLogout={handleLogout} />
       <main className="flex-1 py-8 px-4">
         <div className="container mx-auto max-w-6xl">
-          {/* Welcome Section */}
-          <div className="mb-8 animate-fade-in">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-4 gap-1"
+            onClick={() => navigate("/officer-dashboard")}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Button>
+
+          <div className="mb-6 animate-fade-in">
             <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2">
-              Officer Dashboard
+              Pending Requests
             </h1>
-            <p className="text-muted-foreground">
-              Review and process citizen verification requests.
-            </p>
+            <p className="text-muted-foreground">Review and process pending requests.</p>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            {stats.map((stat, index) => (
-              <Card 
-                key={stat.label} 
-                className="animate-slide-up"
-                style={{ animationDelay: `${index * 0.1}s` }}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg bg-muted flex items-center justify-center ${stat.color}`}>
-                      <stat.icon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                      <p className="text-xs text-muted-foreground">{stat.label}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Pending Requests */}
-          <Card className="shadow-card animate-slide-up" style={{ animationDelay: "0.3s" }}>
+          <Card className="shadow-card animate-slide-up">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-warning" />
-                Pending Requests
+                Waiting for Review
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -178,19 +144,19 @@ const OfficerDashboard = () => {
               ) : isError || requests.length === 0 ? (
                 <div className="p-8 text-center">
                   <CheckCircle2 className="w-12 h-12 text-success mx-auto mb-4" />
-                  <h3 className="font-semibold text-foreground mb-2">All caught up!</h3>
-                  <p className="text-sm text-muted-foreground">
-                    {isError ? "Unable to load requests." : "No pending requests at the moment."}
-                  </p>
+                  <h3 className="font-semibold text-foreground mb-2">
+                    {isError ? "Unable to load requests" : "All caught up"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">No pending requests right now.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {requests.map((request) => (
-                    <div 
-                      key={request.id} 
+                    <div
+                      key={request.id}
                       className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="font-semibold text-foreground">{request.citizen_name}</span>
@@ -208,18 +174,18 @@ const OfficerDashboard = () => {
                             <Eye className="w-4 h-4" />
                             Details
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className="gap-1 text-destructive hover:text-destructive"
                             onClick={() => handleReject(request.id)}
                           >
                             <X className="w-4 h-4" />
                             Reject
                           </Button>
-                          <Button 
-                            variant="success" 
-                            size="sm" 
+                          <Button
+                            variant="success"
+                            size="sm"
                             className="gap-1"
                             onClick={() => handleApprove(request.id)}
                           >
@@ -241,4 +207,4 @@ const OfficerDashboard = () => {
   );
 };
 
-export default OfficerDashboard;
+export default PendingRequests;

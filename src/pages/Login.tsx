@@ -8,6 +8,19 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api";
+import { setTokens } from "@/lib/auth";
+
+type LoginResponse = {
+  access: string;
+  refresh: string;
+};
+
+type MeResponse = {
+  user: {
+    role: "citizen" | "officer" | "admin";
+  };
+};
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -20,15 +33,36 @@ const Login = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login - will be replaced with actual auth
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const tokens = await apiFetch<LoginResponse>("/api/auth/login/", {
+        method: "POST",
+        body: { email, password },
+      });
+      setTokens(tokens);
+
+      const me = await apiFetch<MeResponse>("/api/me/");
+      const role = me.user.role;
+
       toast({
         title: "Login Successful",
-        description: "Welcome back to Mtaa System!",
+        description: "Welcome back to MTAA Connect!",
       });
-      navigate("/dashboard");
-    }, 1000);
+
+      if (role === "officer" || role === "admin") {
+        navigate("/officer-dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Login failed.";
+      toast({
+        title: "Login Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -70,7 +104,7 @@ const Login = () => {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="********"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
@@ -104,7 +138,7 @@ const Login = () => {
 
             <div className="mt-4 pt-4 border-t border-border text-center">
               <Link to="/officer-login" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                Are you a government officer? Login here →
+                Are you a government officer? Login here {"->"}
               </Link>
             </div>
           </CardContent>

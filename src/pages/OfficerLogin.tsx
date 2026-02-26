@@ -8,6 +8,19 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Lock, ArrowRight, Shield } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api";
+import { clearTokens, setTokens } from "@/lib/auth";
+
+type LoginResponse = {
+  access: string;
+  refresh: string;
+};
+
+type MeResponse = {
+  user: {
+    role: "citizen" | "officer" | "admin";
+  };
+};
 
 const OfficerLogin = () => {
   const [email, setEmail] = useState("");
@@ -20,15 +33,40 @@ const OfficerLogin = () => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const tokens = await apiFetch<LoginResponse>("/api/auth/login/", {
+        method: "POST",
+        body: { email, password },
+      });
+      setTokens(tokens);
+
+      const me = await apiFetch<MeResponse>("/api/me/");
+      const role = me.user.role;
+      if (role !== "officer" && role !== "admin") {
+        clearTokens();
+        toast({
+          title: "Access Denied",
+          description: "This account does not have officer access.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Login Successful",
         description: "Welcome to the Officer Portal!",
       });
       navigate("/officer-dashboard");
-    }, 1000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Login failed.";
+      toast({
+        title: "Login Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -70,7 +108,7 @@ const OfficerLogin = () => {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="••••••••"
+                    placeholder="********"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
@@ -90,7 +128,7 @@ const OfficerLogin = () => {
                 This portal is for authorized government officers only.
               </p>
               <Link to="/login" className="text-sm text-primary hover:underline">
-                ← Back to Citizen Portal
+                {"<-"} Back to Citizen Portal
               </Link>
             </div>
           </CardContent>
