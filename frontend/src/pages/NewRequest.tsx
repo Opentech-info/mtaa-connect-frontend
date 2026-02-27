@@ -6,8 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ArrowLeft, Send, Home, CreditCard, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch } from "@/lib/api";
@@ -18,17 +30,20 @@ const letterTypeInfo = {
   residence: {
     icon: Home,
     title: "Residence Letter",
-    description: "Official proof of residence for government and private sector applications.",
+    description:
+      "Official proof of residence for government and private sector applications.",
   },
   nida: {
     icon: CreditCard,
     title: "NIDA Verification Letter",
-    description: "Verification letter to support your National ID registration process.",
+    description:
+      "Verification letter to support your National ID registration process.",
   },
   license: {
     icon: FileText,
     title: "License Verification Letter",
-    description: "Character verification letter for business and professional license applications.",
+    description:
+      "Character verification letter for business and professional license applications.",
   },
 };
 
@@ -94,6 +109,7 @@ const NewRequest = () => {
   const [searchParams] = useSearchParams();
   const initialType = searchParams.get("type") || "";
   const resubmitId = searchParams.get("resubmit");
+  const editId = searchParams.get("edit");
   const { data: me } = useMe();
 
   const [formData, setFormData] = useState({
@@ -117,9 +133,12 @@ const NewRequest = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isPrefilling, setIsPrefilling] = useState(false);
-  const [resubmitStatus, setResubmitStatus] = useState<RequestDetailResponse["status"] | null>(
-    null
-  );
+  const [resubmitStatus, setResubmitStatus] = useState<
+    RequestDetailResponse["status"] | null
+  >(null);
+  const [editStatus, setEditStatus] = useState<
+    RequestDetailResponse["status"] | null
+  >(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -132,20 +151,30 @@ const NewRequest = () => {
   };
 
   useEffect(() => {
-    if (!resubmitId) {
+    const targetId = resubmitId || editId;
+    if (!targetId) {
       return;
     }
 
     let isActive = true;
+    const mode: "resubmit" | "edit" = resubmitId ? "resubmit" : "edit";
 
     const loadRequest = async () => {
       setIsPrefilling(true);
       try {
-        const data = await apiFetch<RequestDetailResponse>(`/api/requests/${resubmitId}/`);
+        const data = await apiFetch<RequestDetailResponse>(
+          `/api/requests/${targetId}/`,
+        );
         if (!isActive) {
           return;
         }
-        setResubmitStatus(data.status);
+
+        if (mode === "resubmit") {
+          setResubmitStatus(data.status);
+        } else {
+          setEditStatus(data.status);
+        }
+
         setFormData({
           letterType: data.request_type,
           purpose: data.purpose || "",
@@ -167,7 +196,8 @@ const NewRequest = () => {
           letter_date: data.metadata?.letter_date || "",
         }));
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Unable to load request.";
+        const message =
+          error instanceof Error ? error.message : "Unable to load request.";
         toast({
           title: "Unable to Load Request",
           description: message,
@@ -184,23 +214,30 @@ const NewRequest = () => {
     return () => {
       isActive = false;
     };
-  }, [resubmitId, toast]);
+  }, [editId, resubmitId, toast]);
 
   const missingLetterFields = useMemo(
     () => requiredLetterFields.filter((field) => !residence[field].trim()),
-    [residence]
+    [residence],
   );
 
   const isLetterSelected = Boolean(formData.letterType);
   const isResubmitting = Boolean(resubmitId);
-  const resubmitLocked = isResubmitting && resubmitStatus && resubmitStatus !== "rejected";
+  const isEditing = Boolean(editId);
+  const resubmitLocked =
+    isResubmitting && resubmitStatus && resubmitStatus !== "rejected";
+  const editLocked = isEditing && editStatus && editStatus !== "pending";
   const isFormValid =
     !!formData.letterType &&
     !!formData.purpose.trim() &&
     (!isLetterSelected || missingLetterFields.length === 0) &&
-    !resubmitLocked;
+    !resubmitLocked &&
+    !editLocked;
 
-  const formatValue = (value: string | undefined, fallback = "........................") => {
+  const formatValue = (
+    value: string | undefined,
+    fallback = "........................",
+  ) => {
     const trimmed = value?.trim();
     return trimmed ? trimmed : fallback;
   };
@@ -239,7 +276,9 @@ const NewRequest = () => {
     }
 
     if (isLetterSelected && missingLetterFields.length > 0) {
-      const missingLabels = missingLetterFields.map((field) => letterFieldLabels[field]).join(", ");
+      const missingLabels = missingLetterFields
+        .map((field) => letterFieldLabels[field])
+        .join(", ");
       toast({
         title: "Complete Required Fields",
         description: `Please fill in: ${missingLabels}.`,
@@ -252,6 +291,15 @@ const NewRequest = () => {
       toast({
         title: "Cannot Resubmit",
         description: "Only rejected requests can be edited and resubmitted.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (editLocked) {
+      toast({
+        title: "Cannot Edit",
+        description: "Only pending requests can be edited.",
         variant: "destructive",
       });
       return;
@@ -274,9 +322,16 @@ const NewRequest = () => {
         letter_date: residence.letter_date,
       };
 
-      const endpoint = isResubmitting ? `/api/requests/${resubmitId}/resubmit/` : "/api/requests/";
+      const isUpdatingPending = isEditing && !editLocked;
+      const endpoint = isResubmitting
+        ? `/api/requests/${resubmitId}/resubmit/`
+        : isUpdatingPending
+          ? `/api/requests/${editId}/`
+          : "/api/requests/";
+      const method = isUpdatingPending ? "PATCH" : "POST";
+
       await apiFetch(endpoint, {
-        method: "POST",
+        method,
         body: {
           request_type: formData.letterType,
           purpose: formData.purpose,
@@ -286,14 +341,21 @@ const NewRequest = () => {
         },
       });
       toast({
-        title: isResubmitting ? "Request Resubmitted" : "Request Submitted",
+        title: isResubmitting
+          ? "Request Resubmitted"
+          : isUpdatingPending
+            ? "Request Updated"
+            : "Request Submitted",
         description: isResubmitting
           ? "Your updated request has been sent for review. You will be notified once it's processed."
-          : "Your letter request has been submitted successfully. You will be notified once it's processed.",
+          : isUpdatingPending
+            ? "Your pending request has been updated. You can continue tracking it from the requests page."
+            : "Your letter request has been submitted successfully. You will be notified once it's processed.",
       });
-      navigate("/dashboard");
+      navigate(isUpdatingPending ? `/requests/${editId}` : "/dashboard");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Request failed.";
+      const message =
+        error instanceof Error ? error.message : "Request failed.";
       toast({
         title: "Submission Failed",
         description: message,
@@ -327,24 +389,44 @@ const NewRequest = () => {
   const previewRegion = titleCase(residence.region);
   const previewDistrict = titleCase(residence.district);
 
+  const formTitle = isResubmitting
+    ? "Edit & Resubmit Request"
+    : isEditing
+      ? "Edit Pending Request"
+      : "New Letter Request";
+  const formDescription = isResubmitting
+    ? "Update the details below, then resubmit for review."
+    : isEditing
+      ? "Adjust your information while the request is still pending."
+      : "Fill in the details below to request a verification letter";
+
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
       <Header isLoggedIn={true} userRole="citizen" onLogout={handleLogout} />
       <main className="flex-1 py-8 px-4">
         <div className="container mx-auto max-w-6xl">
-          <Button variant="ghost" className="mb-6 gap-2" onClick={() => navigate("/dashboard")}>
+          <Button
+            variant="ghost"
+            className="mb-6 gap-2"
+            onClick={() => navigate("/dashboard")}
+          >
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </Button>
 
           {isResubmitting && (
             <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <p className="font-semibold">Editing rejected request REQ-{resubmitId}</p>
+              <p className="font-semibold">
+                Editing rejected request REQ-{resubmitId}
+              </p>
               <p className="text-amber-800">
-                Update the form below and submit again. Only rejected requests can be resubmitted.
+                Update the form below and submit again. Only rejected requests
+                can be resubmitted.
               </p>
               {isPrefilling && (
-                <p className="mt-2 text-amber-700">Loading your previous request details...</p>
+                <p className="mt-2 text-amber-700">
+                  Loading your previous request details...
+                </p>
               )}
               {resubmitLocked && (
                 <p className="mt-2 text-amber-700">
@@ -354,30 +436,61 @@ const NewRequest = () => {
             </div>
           )}
 
+          {isEditing && (
+            <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+              <p className="font-semibold">
+                Editing pending request REQ-{editId}
+              </p>
+              <p className="text-blue-800">
+                Make corrections while the request is still pending review.
+              </p>
+              {isPrefilling && (
+                <p className="mt-2 text-blue-700">
+                  Loading your request details...
+                </p>
+              )}
+              {editLocked && (
+                <p className="mt-2 text-blue-700">
+                  Only pending requests can be edited.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] items-start">
             <Card className="shadow-elevated animate-scale-in">
               <CardHeader>
-                <CardTitle className="font-display text-2xl">New Letter Request</CardTitle>
-                <CardDescription>
-                  Fill in the details below to request a verification letter
-                </CardDescription>
+                <CardTitle className="font-display text-2xl">
+                  {formTitle}
+                </CardTitle>
+                <CardDescription>{formDescription}</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
                     <Label htmlFor="letterType">Letter Type *</Label>
-                  <Select
-                    value={formData.letterType}
-                    onValueChange={(value) => handleChange("letterType", value)}
-                    disabled={isResubmitting || isPrefilling}
-                  >
+                    <Select
+                      value={formData.letterType}
+                      onValueChange={(value) =>
+                        handleChange("letterType", value)
+                      }
+                      disabled={
+                        (isResubmitting && !resubmitLocked) || isPrefilling
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select letter type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="residence">Residence Letter</SelectItem>
-                        <SelectItem value="nida">NIDA Verification Letter</SelectItem>
-                        <SelectItem value="license">License Verification Letter</SelectItem>
+                        <SelectItem value="residence">
+                          Residence Letter
+                        </SelectItem>
+                        <SelectItem value="nida">
+                          NIDA Verification Letter
+                        </SelectItem>
+                        <SelectItem value="license">
+                          License Verification Letter
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -389,8 +502,12 @@ const NewRequest = () => {
                           <selectedTypeInfo.icon className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                          <h4 className="font-semibold text-foreground">{selectedTypeInfo.title}</h4>
-                          <p className="text-sm text-muted-foreground">{selectedTypeInfo.description}</p>
+                          <h4 className="font-semibold text-foreground">
+                            {selectedTypeInfo.title}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            {selectedTypeInfo.description}
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -417,15 +534,24 @@ const NewRequest = () => {
                       </h3>
 
                       <div className="rounded-lg border border-border/70 bg-muted/40 p-4 space-y-4">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Office Header</p>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Office Header
+                        </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="reference_no">Kumbukumbu Na. *</Label>
+                            <Label htmlFor="reference_no">
+                              Kumbukumbu Na. *
+                            </Label>
                             <Input
                               id="reference_no"
                               placeholder="SM/SN/KN/____"
                               value={residence.reference_no}
-                              onChange={(e) => handleResidenceChange("reference_no", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange(
+                                  "reference_no",
+                                  e.target.value,
+                                )
+                              }
                               required
                             />
                           </div>
@@ -435,17 +561,26 @@ const NewRequest = () => {
                               id="to"
                               placeholder="Husika / Yeyote Anayehusika"
                               value={residence.to}
-                              onChange={(e) => handleResidenceChange("to", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange("to", e.target.value)
+                              }
                               required
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="letter_date">Tarehe ya Barua *</Label>
+                            <Label htmlFor="letter_date">
+                              Tarehe ya Barua *
+                            </Label>
                             <Input
                               id="letter_date"
                               type="date"
                               value={residence.letter_date}
-                              onChange={(e) => handleResidenceChange("letter_date", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange(
+                                  "letter_date",
+                                  e.target.value,
+                                )
+                              }
                               required
                             />
                           </div>
@@ -453,7 +588,9 @@ const NewRequest = () => {
                       </div>
 
                       <div className="rounded-lg border border-border/70 bg-muted/40 p-4 space-y-4">
-                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Location Details</p>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Location Details
+                        </p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="ward">Kata *</Label>
@@ -461,7 +598,9 @@ const NewRequest = () => {
                               id="ward"
                               placeholder="Mfano: Nyakato"
                               value={residence.ward}
-                              onChange={(e) => handleResidenceChange("ward", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange("ward", e.target.value)
+                              }
                               required
                             />
                           </div>
@@ -471,7 +610,9 @@ const NewRequest = () => {
                               id="mtaa"
                               placeholder="Mfano: Mtaa wa Nyakato"
                               value={residence.mtaa}
-                              onChange={(e) => handleResidenceChange("mtaa", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange("mtaa", e.target.value)
+                              }
                               required
                             />
                           </div>
@@ -481,7 +622,9 @@ const NewRequest = () => {
                               id="region"
                               placeholder="Mfano: Mara"
                               value={residence.region}
-                              onChange={(e) => handleResidenceChange("region", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange("region", e.target.value)
+                              }
                               required
                             />
                           </div>
@@ -491,7 +634,12 @@ const NewRequest = () => {
                               id="district"
                               placeholder="Mfano: Musoma"
                               value={residence.district}
-                              onChange={(e) => handleResidenceChange("district", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange(
+                                  "district",
+                                  e.target.value,
+                                )
+                              }
                               required
                             />
                           </div>
@@ -501,17 +649,29 @@ const NewRequest = () => {
                               id="house_no"
                               placeholder="Nyumba No"
                               value={residence.house_no}
-                              onChange={(e) => handleResidenceChange("house_no", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange(
+                                  "house_no",
+                                  e.target.value,
+                                )
+                              }
                               required
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="birth_date">Tarehe ya Kuzaliwa *</Label>
+                            <Label htmlFor="birth_date">
+                              Tarehe ya Kuzaliwa *
+                            </Label>
                             <Input
                               id="birth_date"
                               type="date"
                               value={residence.birth_date}
-                              onChange={(e) => handleResidenceChange("birth_date", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange(
+                                  "birth_date",
+                                  e.target.value,
+                                )
+                              }
                               required
                             />
                           </div>
@@ -521,17 +681,29 @@ const NewRequest = () => {
                               id="occupation"
                               placeholder="Kazi"
                               value={residence.occupation}
-                              onChange={(e) => handleResidenceChange("occupation", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange(
+                                  "occupation",
+                                  e.target.value,
+                                )
+                              }
                               required
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="stay_duration">Muda wa Makazi *</Label>
+                            <Label htmlFor="stay_duration">
+                              Muda wa Makazi *
+                            </Label>
                             <Input
                               id="stay_duration"
                               placeholder="Mfano: Miaka 3"
                               value={residence.stay_duration}
-                              onChange={(e) => handleResidenceChange("stay_duration", e.target.value)}
+                              onChange={(e) =>
+                                handleResidenceChange(
+                                  "stay_duration",
+                                  e.target.value,
+                                )
+                              }
                               required
                             />
                           </div>
@@ -542,33 +714,53 @@ const NewRequest = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="urgency">Urgency Level</Label>
-                    <Select value={formData.urgency} onValueChange={(value) => handleChange("urgency", value)}>
+                    <Select
+                      value={formData.urgency}
+                      onValueChange={(value) => handleChange("urgency", value)}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="normal">Normal (2-3 business days)</SelectItem>
-                        <SelectItem value="urgent">Urgent (1 business day)</SelectItem>
+                        <SelectItem value="normal">
+                          Normal (2-3 business days)
+                        </SelectItem>
+                        <SelectItem value="urgent">
+                          Urgent (1 business day)
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="additionalInfo">Additional Information (Optional)</Label>
+                    <Label htmlFor="additionalInfo">
+                      Additional Information (Optional)
+                    </Label>
                     <Textarea
                       id="additionalInfo"
                       placeholder="Any additional details that might help process your request..."
                       value={formData.additionalInfo}
-                      onChange={(e) => handleChange("additionalInfo", e.target.value)}
+                      onChange={(e) =>
+                        handleChange("additionalInfo", e.target.value)
+                      }
                       rows={4}
                     />
                   </div>
 
                   <div className="flex items-start gap-2 p-4 bg-muted rounded-lg">
-                    <input type="checkbox" id="confirm" className="mt-1 rounded border-border" required />
-                    <label htmlFor="confirm" className="text-sm text-muted-foreground">
-                      I confirm that all information provided is accurate and I understand that
-                      providing false information may result in rejection of my request.
+                    <input
+                      type="checkbox"
+                      id="confirm"
+                      className="mt-1 rounded border-border"
+                      required
+                    />
+                    <label
+                      htmlFor="confirm"
+                      className="text-sm text-muted-foreground"
+                    >
+                      I confirm that all information provided is accurate and I
+                      understand that providing false information may result in
+                      rejection of my request.
                     </label>
                   </div>
 
@@ -586,7 +778,17 @@ const NewRequest = () => {
                       className="flex-1"
                       disabled={isLoading || isPrefilling || !isFormValid}
                     >
-                      {isLoading ? "Submitting..." : "Submit Request"}
+                      {isLoading
+                        ? isResubmitting
+                          ? "Resubmitting..."
+                          : isEditing
+                            ? "Saving..."
+                            : "Submitting..."
+                        : isResubmitting
+                          ? "Resubmit Request"
+                          : isEditing
+                            ? "Save Changes"
+                            : "Submit Request"}
                       <Send className="w-4 h-4 ml-2" />
                     </Button>
                   </div>
@@ -596,13 +798,18 @@ const NewRequest = () => {
 
             <Card className="shadow-elevated">
               <CardHeader>
-                <CardTitle className="font-display text-xl">Letter Preview</CardTitle>
-                <CardDescription>Preview the official letter layout before submitting.</CardDescription>
+                <CardTitle className="font-display text-xl">
+                  Letter Preview
+                </CardTitle>
+                <CardDescription>
+                  Preview the official letter layout before submitting.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {!isLetterSelected ? (
                   <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
-                    Select a letter type to see a detailed preview of the official letter format.
+                    Select a letter type to see a detailed preview of the
+                    official letter format.
                   </div>
                 ) : (
                   <div className="rounded-xl border border-slate-200 bg-white p-6 text-[11px] leading-relaxed text-slate-900 shadow-sm">
@@ -617,7 +824,11 @@ const NewRequest = () => {
 
                     <div className="flex flex-wrap gap-4">
                       <div className="h-32 w-24 border border-slate-400 flex items-center justify-center text-[10px] text-slate-500">
-                        BANDIKA<br />PICHA<br />HAPA
+                        BANDIKA
+                        <br />
+                        PICHA
+                        <br />
+                        HAPA
                       </div>
                       <div className="text-[10px] leading-4">
                         <div>OFISI YA SERIKALI ZA MTAA,</div>
@@ -625,30 +836,52 @@ const NewRequest = () => {
                         <div>KATA {previewWard}</div>
                         <div>WILAYA {previewDistrict}</div>
                         <div>MKOA {previewRegion}</div>
-                        <div>TAREHE: {formatValue(residence.letter_date, "__/__/____")}</div>
+                        <div>
+                          TAREHE:{" "}
+                          {formatValue(residence.letter_date, "__/__/____")}
+                        </div>
                       </div>
                     </div>
 
                     <div className="mt-3 text-[11px]">
                       <div className="font-semibold">
-                        KUMBUKUMBU NA: {formatValue(residence.reference_no, "SM/SN/KN/____")}
+                        KUMBUKUMBU NA:{" "}
+                        {formatValue(residence.reference_no, "SM/SN/KN/____")}
                       </div>
-                      <div>KWA: {formatValue(residence.to, "Husika / Yeyote Anayehusika")}</div>
+                      <div>
+                        KWA:{" "}
+                        {formatValue(
+                          residence.to,
+                          "Husika / Yeyote Anayehusika",
+                        )}
+                      </div>
                     </div>
 
                     <div className="mt-3 text-center font-semibold">
-                      YAH: {subjectMap[formData.letterType as "residence" | "nida" | "license"]}
+                      YAH:{" "}
+                      {
+                        subjectMap[
+                          formData.letterType as
+                            | "residence"
+                            | "nida"
+                            | "license"
+                        ]
+                      }
                     </div>
 
                     <div className="mt-3 space-y-2">
                       <p>Husika na kichwa cha habari tajwa hapo juu.</p>
-                      <p>Naomba kutambulisha na kumthibitisha ya kwamba ndugu:</p>
+                      <p>
+                        Naomba kutambulisha na kumthibitisha ya kwamba ndugu:
+                      </p>
                     </div>
 
                     <div className="mt-3 space-y-2">
                       <div className="grid grid-cols-[120px_1fr] gap-2 items-end">
                         <span className="font-semibold">Jina</span>
-                        <span className="border-b border-dotted border-slate-400 pb-0.5">{previewName}</span>
+                        <span className="border-b border-dotted border-slate-400 pb-0.5">
+                          {previewName}
+                        </span>
                       </div>
                       <div className="grid grid-cols-[120px_1fr] gap-2 items-end">
                         <span className="font-semibold">Amezaliwa</span>
@@ -658,7 +891,9 @@ const NewRequest = () => {
                       </div>
                       <div className="grid grid-cols-[120px_1fr] gap-2 items-end">
                         <span className="font-semibold">Namba ya simu</span>
-                        <span className="border-b border-dotted border-slate-400 pb-0.5">{previewPhone}</span>
+                        <span className="border-b border-dotted border-slate-400 pb-0.5">
+                          {previewPhone}
+                        </span>
                       </div>
                       <div className="grid grid-cols-[120px_1fr] gap-2 items-end">
                         <span className="font-semibold">Kazi</span>
@@ -668,23 +903,33 @@ const NewRequest = () => {
                       </div>
                       <div className="grid grid-cols-[120px_1fr] gap-2 items-end">
                         <span className="font-semibold">Anaishi</span>
-                        <span className="border-b border-dotted border-slate-400 pb-0.5">{previewAddress}</span>
+                        <span className="border-b border-dotted border-slate-400 pb-0.5">
+                          {previewAddress}
+                        </span>
                       </div>
                       <div className="grid grid-cols-[120px_1fr] gap-2 items-end">
                         <span className="font-semibold">Mtaa</span>
-                        <span className="border-b border-dotted border-slate-400 pb-0.5">{previewMtaa}</span>
+                        <span className="border-b border-dotted border-slate-400 pb-0.5">
+                          {previewMtaa}
+                        </span>
                       </div>
                       <div className="grid grid-cols-[120px_1fr] gap-2 items-end">
                         <span className="font-semibold">Kata</span>
-                        <span className="border-b border-dotted border-slate-400 pb-0.5">{previewWard}</span>
+                        <span className="border-b border-dotted border-slate-400 pb-0.5">
+                          {previewWard}
+                        </span>
                       </div>
                       <div className="grid grid-cols-[120px_1fr] gap-2 items-end">
                         <span className="font-semibold">Wilaya</span>
-                        <span className="border-b border-dotted border-slate-400 pb-0.5">{previewDistrict}</span>
+                        <span className="border-b border-dotted border-slate-400 pb-0.5">
+                          {previewDistrict}
+                        </span>
                       </div>
                       <div className="grid grid-cols-[120px_1fr] gap-2 items-end">
                         <span className="font-semibold">Mkoa</span>
-                        <span className="border-b border-dotted border-slate-400 pb-0.5">{previewRegion}</span>
+                        <span className="border-b border-dotted border-slate-400 pb-0.5">
+                          {previewRegion}
+                        </span>
                       </div>
                       <div className="grid grid-cols-[120px_1fr] gap-2 items-end">
                         <span className="font-semibold">Nyumba No</span>
@@ -701,17 +946,27 @@ const NewRequest = () => {
                     </div>
 
                     <div className="mt-3">
-                      Sababu ya barua: {formatValue(formData.purpose, "________________")}
+                      Sababu ya barua:{" "}
+                      {formatValue(formData.purpose, "________________")}
                     </div>
 
                     <div className="mt-3 space-y-1">
-                      <div>Maelezo hayo hapo juu ni sahihi kwa kadri ya taarifa tulizonazo.</div>
+                      <div>
+                        Maelezo hayo hapo juu ni sahihi kwa kadri ya taarifa
+                        tulizonazo.
+                      </div>
                       <div>Hivyo basi naomba apatiwe huduma anayoiomba.</div>
                     </div>
 
                     <div className="mt-6 space-y-2">
-                      <div>Imesainiwa na: ________________________________ Mhuri: ______________</div>
-                      <div>Jina la Afisa: ________________________________ Saini: ______________</div>
+                      <div>
+                        Imesainiwa na: ________________________________ Mhuri:
+                        ______________
+                      </div>
+                      <div>
+                        Jina la Afisa: ________________________________ Saini:
+                        ______________
+                      </div>
                     </div>
                   </div>
                 )}

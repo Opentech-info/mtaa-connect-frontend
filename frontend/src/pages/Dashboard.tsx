@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  Home, 
-  CreditCard, 
-  FileText, 
-  Plus, 
-  Clock, 
-  CheckCircle2, 
+import {
+  Home,
+  CreditCard,
+  FileText,
+  Plus,
+  Clock,
+  CheckCircle2,
   XCircle,
   Download,
-  Eye
+  Eye,
 } from "lucide-react";
 import { apiFetch, downloadRequestPdf } from "@/lib/api";
 import { clearTokens, isAuthenticated } from "@/lib/auth";
@@ -74,9 +74,13 @@ const requestTypeLabel = (type: RequestItem["request_type"]) => {
 const getStatusBadge = (status: RequestItem["status"]) => {
   switch (status) {
     case "approved":
-      return <Badge className="bg-success text-success-foreground">Approved</Badge>;
+      return (
+        <Badge className="bg-success text-success-foreground">Approved</Badge>
+      );
     case "pending":
-      return <Badge className="bg-warning text-warning-foreground">Pending</Badge>;
+      return (
+        <Badge className="bg-warning text-warning-foreground">Pending</Badge>
+      );
     case "rejected":
       return <Badge variant="destructive">Rejected</Badge>;
     default:
@@ -99,11 +103,14 @@ const getStatusIcon = (status: RequestItem["status"]) => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { data: me } = useMe();
+  const { data: me, isLoading: isMeLoading } = useMe();
+  const userRole = me?.user.role;
+  const isCitizen = userRole === "citizen";
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["requests"],
     queryFn: () => apiFetch<Paginated<RequestItem>>("/api/requests/"),
-    enabled: isAuthenticated(),
+    enabled: isAuthenticated() && isCitizen,
   });
 
   const requests = data?.results ?? [];
@@ -116,15 +123,28 @@ const Dashboard = () => {
   useEffect(() => {
     if (!isAuthenticated()) {
       navigate("/login");
+      return;
     }
-  }, [navigate]);
+
+    if (userRole && !isCitizen) {
+      navigate("/officer-dashboard");
+    }
+  }, [navigate, userRole, isCitizen]);
 
   const formatDate = (value: string) =>
-    new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    new Date(value).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
 
   return (
     <div className="min-h-screen flex flex-col bg-muted/30">
-      <Header isLoggedIn={true} userRole={me?.user.role || "citizen"} onLogout={handleLogout} />
+      <Header
+        isLoggedIn={true}
+        userRole={me?.user.role || "citizen"}
+        onLogout={handleLogout}
+      />
       <main className="flex-1 py-8 px-4">
         <div className="container mx-auto max-w-6xl">
           {/* Welcome Section */}
@@ -139,11 +159,13 @@ const Dashboard = () => {
 
           {/* Quick Actions */}
           <section className="mb-8">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Request a Letter</h2>
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              Request a Letter
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {letterTypes.map((type, index) => (
-                <Card 
-                  key={type.title} 
+                <Card
+                  key={type.title}
                   className="hover:shadow-elevated transition-all duration-300 cursor-pointer group animate-slide-up"
                   style={{ animationDelay: `${index * 0.1}s` }}
                   onClick={() => navigate(type.href)}
@@ -154,8 +176,12 @@ const Dashboard = () => {
                         <type.icon className="w-6 h-6 text-primary group-hover:text-primary-foreground" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-foreground mb-1">{type.title}</h3>
-                        <p className="text-sm text-muted-foreground">{type.description}</p>
+                        <h3 className="font-semibold text-foreground mb-1">
+                          {type.title}
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {type.description}
+                        </p>
                       </div>
                       <Plus className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     </div>
@@ -168,17 +194,24 @@ const Dashboard = () => {
           {/* Recent Requests */}
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Recent Requests</h2>
+              <h2 className="text-lg font-semibold text-foreground">
+                Recent Requests
+              </h2>
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/requests">View All</Link>
               </Button>
             </div>
 
-            <Card className="shadow-card animate-slide-up" style={{ animationDelay: "0.2s" }}>
+            <Card
+              className="shadow-card animate-slide-up"
+              style={{ animationDelay: "0.2s" }}
+            >
               <CardContent className="p-0">
                 {isLoading ? (
                   <div className="p-8 text-center">
-                    <p className="text-sm text-muted-foreground">Loading requests...</p>
+                    <p className="text-sm text-muted-foreground">
+                      Loading requests...
+                    </p>
                   </div>
                 ) : isError || requests.length === 0 ? (
                   <div className="p-8 text-center">
@@ -187,7 +220,9 @@ const Dashboard = () => {
                       {isError ? "Unable to load requests" : "No requests yet"}
                     </h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                      {isError ? "Please try again later." : "Start by requesting your first verification letter."}
+                      {isError
+                        ? "Please try again later."
+                        : "Start by requesting your first verification letter."}
                     </p>
                     {!isError && (
                       <Button asChild>
@@ -198,7 +233,10 @@ const Dashboard = () => {
                 ) : (
                   <div className="divide-y divide-border">
                     {requests.slice(0, 3).map((request) => (
-                      <div key={request.id} className="p-4 hover:bg-muted/50 transition-colors">
+                      <div
+                        key={request.id}
+                        className="p-4 hover:bg-muted/50 transition-colors"
+                      >
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3">
                             {getStatusIcon(request.status)}
@@ -210,7 +248,8 @@ const Dashboard = () => {
                                 {getStatusBadge(request.status)}
                               </div>
                               <p className="text-sm text-muted-foreground">
-                                REQ-{request.id} - Created {formatDate(request.created_at)}
+                                REQ-{request.id} - Created{" "}
+                                {formatDate(request.created_at)}
                               </p>
                             </div>
                           </div>
@@ -231,7 +270,11 @@ const Dashboard = () => {
                                 variant="outline"
                                 size="sm"
                                 className="gap-1"
-                                onClick={() => navigate(`/new-request?resubmit=${request.id}`)}
+                                onClick={() =>
+                                  navigate(
+                                    `/new-request?resubmit=${request.id}`,
+                                  )
+                                }
                               >
                                 Edit & Resubmit
                               </Button>
@@ -240,7 +283,9 @@ const Dashboard = () => {
                               variant="ghost"
                               size="sm"
                               className="gap-1"
-                              onClick={() => navigate(`/requests/${request.id}`)}
+                              onClick={() =>
+                                navigate(`/requests/${request.id}`)
+                              }
                             >
                               <Eye className="w-4 h-4" />
                               View
@@ -249,9 +294,13 @@ const Dashboard = () => {
                         </div>
                         {request.status === "rejected" && (
                           <div className="mt-3 rounded-md border border-destructive/20 bg-destructive/10 p-3">
-                            <p className="text-sm font-semibold text-destructive">Request rejected</p>
+                            <p className="text-sm font-semibold text-destructive">
+                              Request rejected
+                            </p>
                             <p className="text-sm text-muted-foreground">
-                              Reason: {request.rejection_reason || "No reason provided."}
+                              Reason:{" "}
+                              {request.rejection_reason ||
+                                "No reason provided."}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               Update your information and resubmit when ready.
